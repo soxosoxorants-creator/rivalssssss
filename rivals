@@ -1,0 +1,169 @@
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+-- Lavender / Rose Gold Theme
+local roseGoldTheme = {
+    ElementBackground = Color3.fromRGB(230, 190, 180),
+    ToggleEnabled = Color3.fromRGB(255, 150, 130),
+    ToggleDisabled = Color3.fromRGB(180, 140, 130),
+    InputStroke = Color3.fromRGB(255, 170, 150),
+    InputBackground = Color3.fromRGB(220, 180, 170),
+    DropdownUnselected = Color3.fromRGB(230, 190, 180),
+    Background = Color3.fromRGB(200, 160, 150),
+    TabBackground = Color3.fromRGB(240, 200, 190),
+    ToggleDisabledOuterStroke = Color3.fromRGB(170, 130, 120),
+    DropdownSelected = Color3.fromRGB(255, 180, 160),
+    TextColor = Color3.fromRGB(100, 60, 50),
+    ElementBackgroundHover = Color3.fromRGB(250, 210, 200),
+    ToggleBackground = Color3.fromRGB(210, 170, 160),
+    SelectedTabTextColor = Color3.fromRGB(255, 100, 80),
+    ToggleDisabledStroke = Color3.fromRGB(190, 150, 140),
+    NotificationBackground = Color3.fromRGB(230, 190, 180),
+    ToggleEnabledStroke = Color3.fromRGB(255, 130, 110),
+    Shadow = Color3.fromRGB(150, 110, 100),
+    NotificationActionsBackground = Color3.fromRGB(240, 200, 190),
+    ToggleEnabledOuterStroke = Color3.fromRGB(255, 170, 150),
+    TabStroke = Color3.fromRGB(255, 150, 130),
+    SecondaryElementBackground = Color3.fromRGB(220, 180, 170),
+    SliderProgress = Color3.fromRGB(255, 130, 110),
+    SliderBackground = Color3.fromRGB(240, 200, 190),
+    TabTextColor = Color3.fromRGB(120, 80, 70),
+    ElementStroke = Color3.fromRGB(255, 170, 150),
+    TabBackgroundSelected = Color3.fromRGB(250, 210, 200),
+    SecondaryElementStroke = Color3.fromRGB(255, 150, 130),
+    PlaceholderColor = Color3.fromRGB(180, 140, 130),
+    Topbar = Color3.fromRGB(220, 180, 170),
+    SliderStroke = Color3.fromRGB(255, 170, 150)
+}
+
+local Window = Rayfield:CreateWindow({
+    Name = "Rivals Mobile Enhanced",
+    LoadingTitle = "Lavender Vision",
+    LoadingSubtitle = "By NaturalNoob - Mobile Fix",
+    Theme = roseGoldTheme,
+    ConfigurationSaving = {Enabled = false}
+})
+
+-[span_9](start_span)[span_10](start_span)- Variables[span_9](end_span)[span_10](end_span)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local AimbotEnabled = false
+local SilentAim = false
+local TriggerBot = false
+local TeamCheck = true
+local WallCheck = true
+local AimPart = "Head"
+local FOVRadius = 160
+local AimSmoothness = 0.18
+
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.Visible = false
+FOVCircle.Color = Color3.new(1,1,1)
+
+-[span_11](start_span)- Helper Functions[span_11](end_span)
+local function GetClosestTarget()
+    local closest, dist = nil, FOVRadius
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            if TeamCheck and plr.Team == LocalPlayer.Team then continue end
+            
+            local part = plr.Character:FindFirstChild(AimPart)
+            if part then
+                local pos, vis = Camera:WorldToViewportPoint(part.Position)
+                if vis then
+                    local mag = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if mag < dist then
+                        dist = mag
+                        closest = {Part = part, Player = plr}
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-[span_12](start_span)- Silent Aim Fix (No Freezing)[span_12](end_span)
+local targetForSilent = nil
+task.spawn(function()
+    while task.wait() do
+        if SilentAim then
+            targetForSilent = GetClosestTarget()
+        else
+            targetForSilent = nil
+        end
+    end
+end)
+
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", function(self, index)
+    if SilentAim and not checkcaller() and index == "CFrame" and self == Camera then
+        if targetForSilent then
+            return CFrame.new(Camera.CFrame.Position, targetForSilent.Part.Position)
+        end
+    end
+    return oldIndex(self, index)
+end)
+
+-[span_13](start_span)- Tabs[span_13](end_span)
+local AimTab = Window:CreateTab("Aimbot")
+AimTab:CreateSection("Aim Settings")
+
+AimTab:CreateToggle({
+    Name = "Enable Aimbot (Mobile)",
+    CurrentValue = false,
+    Callback = function(v) AimbotEnabled = v end
+})
+
+AimTab:CreateToggle({
+    Name = "Silent Aim",
+    CurrentValue = false,
+    Callback = function(v) SilentAim = v end
+})
+
+AimTab:CreateToggle({
+    Name = "Trigger Bot",
+    CurrentValue = false,
+    Callback = function(v) TriggerBot = v end
+})
+
+AimTab:CreateToggle({
+    Name = "Show FOV Circle",
+    CurrentValue = false,
+    Callback = function(v) FOVCircle.Visible = v end
+})
+
+AimTab:CreateSlider({
+    Name = "FOV Size",
+    Range = {60, 400},
+    Increment = 10,
+    CurrentValue = 160,
+    Callback = function(v) FOVRadius = v end
+})
+
+-[span_14](start_span)[span_15](start_span)- Main Execution Loop[span_14](end_span)[span_15](end_span)
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    FOVCircle.Radius = FOVRadius
+
+    if AimbotEnabled then
+        local target = GetClosestTarget()
+        if target then
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Part.Position), AimSmoothness)
+        end
+    end
+
+    if TriggerBot then
+        local target = GetClosestTarget()
+        if target then
+            mouse1press()
+            task.wait(0.05)
+            mouse1release()
+        end
+    end
+end)
